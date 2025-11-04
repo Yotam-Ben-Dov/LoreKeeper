@@ -14,14 +14,17 @@ def create_chapter(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
+    print(f"\n📝 Creating new chapter in project {project_id}", flush=True)
+    
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
     
     word_count = len(chapter.content.split())
+    print(f"   Word count: {word_count}", flush=True)
     
     db_chapter = models.Chapter(
-        **chapter.dict(),
+        **chapter.model_dump(),
         project_id=project_id,
         word_count=word_count
     )
@@ -29,8 +32,13 @@ def create_chapter(
     db.commit()
     db.refresh(db_chapter)
     
-    # Run NER in background (English) - removed db parameter
+    print(f"✓ Chapter created with ID: {db_chapter.id}", flush=True)
+    print(f"⏰ Scheduling NER background task...", flush=True)
+    
+    # Run NER in background (English)
     background_tasks.add_task(process_chapter_ner, db_chapter.id, 'en')
+    
+    print(f"✓ Background task scheduled", flush=True)
     
     return db_chapter
 
@@ -54,17 +62,22 @@ def update_chapter(
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db)
 ):
+    print(f"\n📝 Updating chapter {chapter_id}", flush=True)
+    
     db_chapter = db.query(models.Chapter).filter(models.Chapter.id == chapter_id).first()
     if not db_chapter:
         raise HTTPException(status_code=404, detail="Chapter not found")
     
-    update_data = chapter.dict(exclude_unset=True)
+    update_data = chapter.model_dump(exclude_unset=True)
     
     # Recalculate word count if content changed
     if 'content' in update_data:
         update_data['word_count'] = len(update_data['content'].split())
-        # Re-run NER if content changed - removed db parameter
+        print(f"   Content changed, new word count: {update_data['word_count']}", flush=True)
+        print(f"⏰ Scheduling NER background task...", flush=True)
+        # Re-run NER if content changed
         background_tasks.add_task(process_chapter_ner, chapter_id, 'en')
+        print(f"✓ Background task scheduled", flush=True)
     
     for key, value in update_data.items():
         setattr(db_chapter, key, value)

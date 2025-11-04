@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, asc
-from typing import List
+from typing import List, Optional
 from .. import models, schemas
 from ..database import get_db
 
@@ -10,16 +10,21 @@ router = APIRouter()
 @router.get("/{project_id}", response_model=List[schemas.EntityResponse])
 def list_entities(
     project_id: int,
-    entity_type: str = None,
+    entity_type: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
+    # Fixed query with explicit select_from and join conditions
     query = db.query(
         models.Entity,
         func.count(models.EntityMention.id).label('mention_count'),
         func.min(models.Chapter.chapter_number).label('first_appearance'),
         func.max(models.Chapter.chapter_number).label('last_appearance')
-    ).outerjoin(models.EntityMention).outerjoin(
-        models.Chapter, models.EntityMention.chapter_id == models.Chapter.id
+    ).select_from(models.Entity).outerjoin(
+        models.EntityMention,
+        models.Entity.id == models.EntityMention.entity_id
+    ).outerjoin(
+        models.Chapter,
+        models.EntityMention.chapter_id == models.Chapter.id
     ).filter(models.Entity.project_id == project_id)
     
     if entity_type:
@@ -30,7 +35,7 @@ def list_entities(
     return [
         {
             **entity.__dict__,
-            'mention_count': count,
+            'mention_count': count or 0,
             'first_appearance': first,
             'last_appearance': last
         }
@@ -40,7 +45,8 @@ def list_entities(
 @router.get("/{entity_id}/mentions")
 def get_entity_mentions(entity_id: int, db: Session = Depends(get_db)):
     mentions = db.query(models.EntityMention).join(
-        models.Chapter
+        models.Chapter,
+        models.EntityMention.chapter_id == models.Chapter.id
     ).filter(
         models.EntityMention.entity_id == entity_id
     ).order_by(asc(models.Chapter.chapter_number)).all()
@@ -67,7 +73,7 @@ def update_entity(
     if not db_entity:
         raise HTTPException(status_code=404, detail="Entity not found")
     
-    for key, value in entity.dict(exclude_unset=True).items():
+    for key, value in entity.model_dump(exclude_unset=True).items():
         setattr(db_entity, key, value)
     
     db.commit()
@@ -76,7 +82,7 @@ def update_entity(
     # Get mention count
     mention_count = db.query(func.count(models.EntityMention.id)).filter(
         models.EntityMention.entity_id == entity_id
-    ).scalar()
+    ).scalar() or 0
     
     return {**db_entity.__dict__, 'mention_count': mention_count}
 

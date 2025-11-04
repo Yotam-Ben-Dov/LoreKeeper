@@ -9,10 +9,12 @@ router = APIRouter()
 
 @router.post("/", response_model=schemas.ProjectResponse)
 def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):
-    db_project = models.Project(**project.dict())
+    # project is Pydantic schema - use model_dump()
+    db_project = models.Project(**project.model_dump())
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
+    # db_project is SQLAlchemy model - use __dict__
     return {**db_project.__dict__, 'chapter_count': 0}
 
 @router.get("/", response_model=List[schemas.ProjectResponse])
@@ -22,6 +24,7 @@ def list_projects(db: Session = Depends(get_db)):
         func.count(models.Chapter.id).label('chapter_count')
     ).outerjoin(models.Chapter).group_by(models.Project.id).all()
     
+    # project is SQLAlchemy model - use __dict__
     return [
         {**project.__dict__, 'chapter_count': count}
         for project, count in projects
@@ -39,6 +42,7 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
     if not result:
         raise HTTPException(status_code=404, detail="Project not found")
     
+    # project is SQLAlchemy model - use __dict__
     project, count = result
     return {**project.__dict__, 'chapter_count': count}
 

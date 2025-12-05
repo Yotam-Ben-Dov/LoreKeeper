@@ -145,7 +145,7 @@ def create_version(
         raise HTTPException(status_code=404, detail="Chapter not found")
     
     # Get current highest version number
-    max_version = db.query(func.max(models.ChapterVersion.version_number)).filter(
+    max_version = db.query(function.max(models.ChapterVersion.version_number)).filter(
         models.ChapterVersion.chapter_id == chapter_id
     ).scalar() or 0
     
@@ -185,7 +185,7 @@ def restore_version(
         raise HTTPException(status_code=404, detail="Version not found")
     
     # Save current state as a new version before restoring
-    max_version = db.query(func.max(models.ChapterVersion.version_number)).filter(
+    max_version = db.query(function.max(models.ChapterVersion.version_number)).filter(
         models.ChapterVersion.chapter_id == chapter_id
     ).scalar() or 0
     

@@ -1,4 +1,4 @@
-# LoreKeeper
+LoreKeeper
 
 ```markdown
 # 📚 LoreKeeper

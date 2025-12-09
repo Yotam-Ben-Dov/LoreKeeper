@@ -7,11 +7,6 @@ LoreKeeper
 
 Build a wiki for any novel automatically. Ask questions about your story and get answers with citations. Never lose track of who's who again.
 
-![Python](https://img.shields.io/badge/python-3.11-blue)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)
-![React](https://img.shields.io/badge/React-18-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-
 ---
 
 ## ✨ Features
